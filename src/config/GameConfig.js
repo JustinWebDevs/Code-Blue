@@ -7,6 +7,7 @@ import { KeyBindScene }   from '../scenes/KeyBindScene.js';
 import { AnalysisScene }  from '../scenes/AnalysisScene.js';
 import { PauseScene }     from '../scenes/PauseScene.js';
 import { LibraryScene }   from '../scenes/LibraryScene.js';
+import { TutorialScene }  from '../scenes/TutorialScene.js';
 import { SCREEN }         from './Constants.js';
 
 export const GameConfig = {
@@ -15,7 +16,7 @@ export const GameConfig = {
   height: SCREEN.HEIGHT,
   backgroundColor: '#000000',
   parent: 'game-container',
-  scene: [BootScene, MenuScene, GameScene, GameOverScene, KeyBindScene, AnalysisScene, PauseScene, LibraryScene],
+  scene: [BootScene, MenuScene, GameScene, GameOverScene, KeyBindScene, AnalysisScene, PauseScene, LibraryScene, TutorialScene],
   render: {
     antialias: true,
     powerPreference: 'high-performance',

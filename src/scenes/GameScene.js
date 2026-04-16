@@ -1,6 +1,22 @@
 import Phaser from 'phaser';
-import { SCREEN, PHYSICS } from '../config/Constants.js';
+import { SCREEN, PHYSICS, HOLD, NOTE_COLORS } from '../config/Constants.js';
 import { EventBus }        from '../utils/EventBus.js';
+
+// ── Transition key-label helpers ────────────────────────────────────────────
+function _defaultKeysForZone(zone) {
+  if (zone === 'UP')     return ['up'];
+  if (zone === 'DOWN')   return ['down'];
+  if (zone === 'CENTER') return ['center'];
+  return [];
+}
+function _formatTransitionLabel(keys) {
+  return (keys || []).map(k => {
+    if (k === 'up')     return 'A';
+    if (k === 'down')   return 'D';
+    if (k === 'center') return 'SPACE';
+    return k.toUpperCase();
+  }).join('+');
+}
 
 import { InputSystem }    from '../systems/InputSystem.js';
 import { ECGPhysics }     from '../systems/ECGPhysics.js';
@@ -68,6 +84,12 @@ export class GameScene extends Phaser.Scene {
     this._pauseKey.on('down', this._togglePause, this);
     this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P)
       .on('down', this._togglePause, this);
+
+    // --- Transition flash label (shown at judgment cursor on segment change) ---
+    this._transitionLabel = this.add.text(SCREEN.JUDGMENT_X, SCREEN.HEIGHT / 2 - 50, '', {
+      fontFamily: 'monospace', fontSize: '22px', color: '#00ffff',
+      stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setAlpha(0).setDepth(20);
 
     // --- Countdown then start audio ---
     this._countingDown = true;
@@ -177,6 +199,25 @@ export class GameScene extends Phaser.Scene {
   _onSegmentChange({ beat, segmentIdx, zone }) {
     // Short accent beep to signal the hold path changed
     this._audioManager.playSFX('good');
+
+    // Flash "→ KEY" at the judgment cursor so the player knows what to press
+    const segments = beat.holdSegments?.length ? beat.holdSegments : [{ zone: beat.zone }];
+    const seg      = segments[segmentIdx];
+    const keys     = seg.keys?.length ? seg.keys : _defaultKeysForZone(seg.zone);
+    const label    = _formatTransitionLabel(keys);
+    const zoneColor = NOTE_COLORS[zone] ?? 0x00ffff;
+    const css = '#' + zoneColor.toString(16).padStart(6, '0');
+
+    this._transitionLabel.setText(`→ ${label}`);
+    this._transitionLabel.setColor(css);
+    this._transitionLabel.setAlpha(1);
+    this.tweens.killTweensOf(this._transitionLabel);
+    this.tweens.add({
+      targets:  this._transitionLabel,
+      alpha:    0,
+      duration: HOLD.TRANSITION_GRACE_MS,
+      ease:     'Linear',
+    });
   }
 
   _togglePause() {

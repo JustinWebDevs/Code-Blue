@@ -107,9 +107,12 @@ export class BeatEvaluator {
     const inZone  = this._ecgPhysics.getZone() === currentSeg.zone;
     const keysOk  = requiredKeys.every(k => this._ecgPhysics.isKeyHeld(k));
 
-    // Grace window right after a segment transition — give the player time to switch inputs
+    // Grace window: longer for the initial entry (segment 0) than for mid-hold transitions
+    const graceMs      = this._holdState.segmentIdx === 0
+      ? HOLD.ENTRY_GRACE_MS
+      : HOLD.TRANSITION_GRACE_MS;
     const graceElapsed = songTimeMs - this._holdState.segmentChangedMs;
-    const inGrace      = graceElapsed < HOLD.TRANSITION_GRACE_MS;
+    const inGrace      = graceElapsed < graceMs;
 
     if (!inZone || !keysOk) {
       if (inGrace) return; // still transitioning — don't break yet

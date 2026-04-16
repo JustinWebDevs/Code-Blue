@@ -64,7 +64,8 @@ export const NOTE_COLORS = {
 
 export const HOLD = {
   COMPLETE_BONUS:       2.0,   // score multiplier for a full hold (strike score × this)
-  TRANSITION_GRACE_MS:  300,   // grace window after a segment change — player has this long to reach new zone/keys
+  TRANSITION_GRACE_MS:  600,   // grace window after a segment change — player has this long to reach new zone/keys
+  ENTRY_GRACE_MS:      1000,   // grace window when the hold first starts (segment 0) — player has time to press the key
 };
 
 export const SCREEN = {

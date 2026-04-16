@@ -48,11 +48,11 @@ const DEMO_BEATMAP = {
     { id: 'b023', timeMs: 23900, zone: 'UP',     intensity: 1.0, holdMs: 0 },
     { id: 'b024', timeMs: 24700, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
     { id: 'b025', timeMs: 25500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    // Segmented hold (TOTAL transition): D → SPC at 1000ms (completely switch keys)
-    { id: 'b026', timeMs: 26500, zone: 'DOWN',   intensity: 1.0, holdMs: 1800,
+    // Segmented hold (TOTAL transition): D → SPC at 1400ms (completely switch keys)
+    { id: 'b026', timeMs: 26500, zone: 'DOWN',   intensity: 1.0, holdMs: 2600,
       holdSegments: [
-        { offsetMs: 0,    zone: 'DOWN',   keys: ['down']   },
-        { offsetMs: 1000, zone: 'CENTER', keys: ['center'] },
+        { offsetMs:    0, zone: 'DOWN',   keys: ['down']   },
+        { offsetMs: 1400, zone: 'CENTER', keys: ['center'] },
       ]
     },
     { id: 'b027', timeMs: 29000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
@@ -72,12 +72,12 @@ const DEMO_BEATMAP = {
     { id: 'b039', timeMs: 37500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
     // 3-segment hold mixing PARTIAL and TOTAL transitions:
     // SPC → SPC+A (partial: add A) → SPC (partial: release A) → D (total: switch to D)
-    { id: 'b040', timeMs: 38500, zone: 'CENTER', intensity: 0.8, holdMs: 2400,
+    // Segmented hold (PARTIAL then TOTAL): SPC → SPC+A (partial add A) → D (total switch)
+    { id: 'b040', timeMs: 38500, zone: 'CENTER', intensity: 0.8, holdMs: 3400,
       holdSegments: [
-        { offsetMs: 0,    zone: 'CENTER', keys: ['center']        },
-        { offsetMs: 700,  zone: 'UP',     keys: ['center', 'up']  },  // partial add A
-        { offsetMs: 1400, zone: 'CENTER', keys: ['center']        },  // partial release A
-        { offsetMs: 1900, zone: 'DOWN',   keys: ['down']          },  // total switch to D
+        { offsetMs:    0, zone: 'CENTER', keys: ['center']        },  // hold SPACE
+        { offsetMs: 1400, zone: 'UP',     keys: ['center', 'up']  },  // partial: add A
+        { offsetMs: 2600, zone: 'DOWN',   keys: ['down']          },  // total: switch to D
       ]
     },
     { id: 'b041', timeMs: 41300, zone: 'UP',     intensity: 1.0, holdMs: 0 },
@@ -165,11 +165,12 @@ export class MenuScene extends Phaser.Scene {
     startBtn.on('pointerdown',  () => this._startGame());
     this.input.keyboard.once('keydown-ENTER', () => this._startGame());
 
-    // Secondary buttons row
+    // Secondary buttons row (4 buttons at ±300 and ±100 around center)
     const secondaryBtns = [
-      { label: '[ LOAD TRACK ]',    scene: 'AnalysisScene', x: cx - 220 },
-      { label: '[ TRACK LIBRARY ]', scene: 'LibraryScene',  x: cx       },
-      { label: '[ KEY BINDINGS ]',  scene: 'KeyBindScene',  x: cx + 220 },
+      { label: '[ TUTORIAL ]',      scene: 'TutorialScene', x: cx - 300 },
+      { label: '[ LOAD TRACK ]',    scene: 'AnalysisScene', x: cx - 100 },
+      { label: '[ TRACK LIBRARY ]', scene: 'LibraryScene',  x: cx + 100 },
+      { label: '[ KEY BINDINGS ]',  scene: 'KeyBindScene',  x: cx + 300 },
     ];
 
     secondaryBtns.forEach(({ label, scene, x }) => {

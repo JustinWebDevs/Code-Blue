@@ -147,7 +147,7 @@ export class GhostLine {
   // ── Active hold ──────────────────────────────────────────────────────────────
 
   _drawActiveHold(g, songTimeMs, holdState) {
-    const { beat, progress, segmentIdx } = holdState;
+    const { beat, progress, segmentIdx, segmentChangedMs } = holdState;
     const segments = beat.holdSegments?.length
       ? beat.holdSegments
       : [{ offsetMs: 0, zone: beat.zone }];
@@ -179,10 +179,32 @@ export class GhostLine {
       }
     }
 
-    // Pulsing anchor
+    // Pulsing anchor circle
     const pulse = 0.5 + 0.5 * Math.sin(songTimeMs * 0.015);
     g.lineStyle(2, currentColor, 0.5 + 0.4 * pulse);
     g.strokeCircle(SCREEN.JUDGMENT_X, targetY, 10 + pulse * 4);
+
+    // ── Grace-window arc (depletes over TRANSITION_GRACE_MS after each segment change) ──
+    // Only shown after the first transition (segmentIdx > 0) so the player
+    // sees a visible countdown to switch keys.
+    if (segmentIdx > 0) {
+      const graceElapsed = songTimeMs - segmentChangedMs;
+      const graceRatio   = Math.max(0, 1 - graceElapsed / HOLD.TRANSITION_GRACE_MS);
+      if (graceRatio > 0) {
+        const endAngle = -Math.PI / 2 + 2 * Math.PI * graceRatio;
+        g.lineStyle(4, currentColor, 0.85);
+        g.beginPath();
+        g.arc(SCREEN.JUDGMENT_X, targetY, 22, -Math.PI / 2, endAngle, false);
+        g.strokePath();
+      }
+    }
+
+    // Current required-key label to the right of the anchor
+    const reqKeys  = segmentKeys(currentSeg);
+    const keyText  = formatKeyLabel(reqKeys);
+    if (keyText) {
+      this._acquireLabel(keyText, SCREEN.JUDGMENT_X + 32, targetY, 0.95, hexToCSS(currentColor), '12px');
+    }
   }
 
   _drawActiveSegmentedBar(g, _songTimeMs, beat, segments, elapsed, totalProgress, currentSegIdx) {
