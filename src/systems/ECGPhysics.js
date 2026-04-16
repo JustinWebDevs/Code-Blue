@@ -1,0 +1,95 @@
+import { PHYSICS, ECG_ZONES } from '../config/Constants.js';
+import { clamp } from '../utils/MathUtils.js';
+
+export class ECGPhysics {
+  constructor() {
+    this.position      = 0;   // -1.0 (top) to +1.0 (bottom), 0 = center
+    this.velocity      = 0;
+    this._frozen       = false;
+    this._freezePos    = 0;
+    this._prevPosition = 0;
+
+    // Noise overlay for chaos effects (set externally)
+    this.noiseAmplitude = 0;
+  }
+
+  update(delta, inputState) {
+    this._prevPosition = this.position;   // save before physics step
+    const dt = delta / 16.667; // normalize to 60fps units
+
+    // Determine spring target from input
+    let target = 0.0;
+
+    if (inputState.freeze) {
+      if (!this._frozen) {
+        this._frozen    = true;
+        this._freezePos = this.position;
+      }
+      target = this._freezePos;
+      // Extra drag while frozen so the line settles quickly
+      this.velocity *= Math.pow(PHYSICS.FREEZE_DRAG, dt);
+    } else {
+      this._frozen = false;
+      if (inputState.up)        target = -1.0;
+      else if (inputState.down) target =  1.0;
+      // else target stays 0.0 (return to center)
+    }
+
+    // Spring: pull velocity toward target
+    const springForce = (target - this.position) * PHYSICS.SPRING_STIFFNESS * dt;
+    this.velocity += springForce;
+
+    // Damping (frame-rate aware)
+    this.velocity *= Math.pow(PHYSICS.DAMPING, dt);
+
+    // Integrate
+    this.position += this.velocity * dt;
+    this.position = clamp(this.position, -1.0, 1.0);
+  }
+
+  /** Returns the pixel Y position for the line center */
+  getPixelY(screenHeight) {
+    const noise = this.noiseAmplitude > 0
+      ? (Math.random() * 2 - 1) * this.noiseAmplitude
+      : 0;
+    return (screenHeight / 2) + (this.position * PHYSICS.ECG_AMPLITUDE_PX) + noise;
+  }
+
+  /** Returns 'UP' | 'CENTER' | 'DOWN' */
+  getZone() {
+    const p = this.position;
+    if (p <= ECG_ZONES.UP.max)                                 return 'UP';
+    if (p >= ECG_ZONES.DOWN.min)                               return 'DOWN';
+    return 'CENTER';
+  }
+
+  /** Returns true if the ECG line entered `zone` this frame (was outside last frame) */
+  didEnterZone(zone) {
+    const prev = this._zoneOf(this._prevPosition);
+    return this.getZone() === zone && prev !== zone;
+  }
+
+  _zoneOf(p) {
+    if (p <= ECG_ZONES.UP.max)   return 'UP';
+    if (p >= ECG_ZONES.DOWN.min) return 'DOWN';
+    return 'CENTER';
+  }
+
+  getState() {
+    return {
+      position: this.position,
+      velocity: this.velocity,
+      frozen:   this._frozen,
+      zone:     this.getZone(),
+    };
+  }
+
+  reset() {
+    this.position       = 0;
+    this.velocity       = 0;
+    this._frozen        = false;
+    this._freezePos     = 0;
+    this._prevPosition  = 0;
+    this.noiseAmplitude = 0;
+  }
+}
