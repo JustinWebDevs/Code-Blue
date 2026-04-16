@@ -16,7 +16,7 @@ export class InputSystem {
     this._keys = {
       up:     this._scene.input.keyboard.addKey(keyBindings.get('LINE_UP')),
       down:   this._scene.input.keyboard.addKey(keyBindings.get('LINE_DOWN')),
-      freeze: this._scene.input.keyboard.addKey(keyBindings.get('FREEZE')),
+      center: this._scene.input.keyboard.addKey(keyBindings.get('CENTER_HOLD')),
     };
   }
 
@@ -29,7 +29,7 @@ export class InputSystem {
     return {
       up:     this._keys.up.isDown,
       down:   this._keys.down.isDown,
-      freeze: this._keys.freeze.isDown,
+      center: this._keys.center.isDown,
     };
   }
 

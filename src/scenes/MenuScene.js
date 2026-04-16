@@ -28,73 +28,67 @@ const DEMO_BEATMAP = {
     { id: 'b007', timeMs:  8000, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
     { id: 'b008', timeMs:  9000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
 
-    // --- SECTION 1: 500ms beat, smooth patterns ---
+    // --- SECTION 1: 750ms gaps, introduces basic holds ---
     { id: 'b009', timeMs: 11000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b010', timeMs: 11500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b011', timeMs: 12000, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b012', timeMs: 12500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b013', timeMs: 13000, zone: 'UP',     intensity: 1.0, holdMs: 600 },
-    { id: 'b014', timeMs: 13700, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b015', timeMs: 14200, zone: 'DOWN',   intensity: 1.0, holdMs: 700 },
-    { id: 'b016', timeMs: 15000, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b017', timeMs: 15000, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b018', timeMs: 15500, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b019', timeMs: 16000, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b020', timeMs: 16500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b021', timeMs: 17000, zone: 'DOWN',   intensity: 1.0, holdMs: 750 },
-    { id: 'b022', timeMs: 17900, zone: 'CENTER', intensity: 0.8, holdMs: 500 },
-    { id: 'b023', timeMs: 18550, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b024', timeMs: 18500, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b025', timeMs: 19000, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b026', timeMs: 19500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    { id: 'b010', timeMs: 11750, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    { id: 'b011', timeMs: 12500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    { id: 'b012', timeMs: 13250, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    { id: 'b013', timeMs: 14000, zone: 'UP',     intensity: 1.0, holdMs: 600 },
+    { id: 'b014', timeMs: 15300, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    { id: 'b015', timeMs: 16100, zone: 'DOWN',   intensity: 1.0, holdMs: 700 },
+    { id: 'b016', timeMs: 17500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    { id: 'b017', timeMs: 18300, zone: 'UP',     intensity: 1.0, holdMs: 0 },
+    { id: 'b018', timeMs: 19100, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    { id: 'b019', timeMs: 19900, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
 
-    // --- SECTION 2: mixed gaps, more unpredictable ---
-    { id: 'b027', timeMs: 21000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b028', timeMs: 21750, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b029', timeMs: 22500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b030', timeMs: 23000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b031', timeMs: 23500, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b032', timeMs: 24000, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b033', timeMs: 24500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b034', timeMs: 25000, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b035', timeMs: 25500, zone: 'UP',     intensity: 1.0, holdMs: 600 },
-    { id: 'b036', timeMs: 26300, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b037', timeMs: 26500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b038', timeMs: 27000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b039', timeMs: 27500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b040', timeMs: 28000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b041', timeMs: 28500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b042', timeMs: 29000, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b043', timeMs: 29500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b044', timeMs: 30000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b045', timeMs: 30500, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b046', timeMs: 31000, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b047', timeMs: 31500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b048', timeMs: 32000, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    // --- SECTION 2: 750-800ms gaps, segmented hold debut ---
+    { id: 'b020', timeMs: 21500, zone: 'UP',     intensity: 1.0, holdMs: 0 },
+    { id: 'b021', timeMs: 22300, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    { id: 'b022', timeMs: 23100, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    { id: 'b023', timeMs: 23900, zone: 'UP',     intensity: 1.0, holdMs: 0 },
+    { id: 'b024', timeMs: 24700, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    { id: 'b025', timeMs: 25500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    // Segmented hold (TOTAL transition): D → SPC at 1000ms (completely switch keys)
+    { id: 'b026', timeMs: 26500, zone: 'DOWN',   intensity: 1.0, holdMs: 1800,
+      holdSegments: [
+        { offsetMs: 0,    zone: 'DOWN',   keys: ['down']   },
+        { offsetMs: 1000, zone: 'CENTER', keys: ['center'] },
+      ]
+    },
+    { id: 'b027', timeMs: 29000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
+    { id: 'b028', timeMs: 29800, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    { id: 'b029', timeMs: 30600, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    { id: 'b030', timeMs: 31400, zone: 'UP',     intensity: 1.0, holdMs: 0 },
+    { id: 'b031', timeMs: 32200, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
 
-    // --- SECTION 3: climax, dense and demanding ---
-    { id: 'b049', timeMs: 33500, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b050', timeMs: 34000, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b051', timeMs: 34500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b052', timeMs: 35000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b053', timeMs: 35500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b054', timeMs: 36000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b055', timeMs: 36500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b056', timeMs: 37000, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b057', timeMs: 37500, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b058', timeMs: 38000, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b059', timeMs: 38500, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b060', timeMs: 39000, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b061', timeMs: 39500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b062', timeMs: 40000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b063', timeMs: 40500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b064', timeMs: 41000, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b065', timeMs: 41500, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b066', timeMs: 42000, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b067', timeMs: 42500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
-    { id: 'b068', timeMs: 43000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
-    { id: 'b069', timeMs: 43500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
-    { id: 'b070', timeMs: 44000, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    // --- SECTION 3: climax, 500ms, then 3-segment hold finale ---
+    { id: 'b032', timeMs: 34000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
+    { id: 'b033', timeMs: 34500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    { id: 'b034', timeMs: 35000, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    { id: 'b035', timeMs: 35500, zone: 'UP',     intensity: 1.0, holdMs: 0 },
+    { id: 'b036', timeMs: 36000, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    { id: 'b037', timeMs: 36500, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    { id: 'b038', timeMs: 37000, zone: 'UP',     intensity: 1.0, holdMs: 0 },
+    { id: 'b039', timeMs: 37500, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    // 3-segment hold mixing PARTIAL and TOTAL transitions:
+    // SPC → SPC+A (partial: add A) → SPC (partial: release A) → D (total: switch to D)
+    { id: 'b040', timeMs: 38500, zone: 'CENTER', intensity: 0.8, holdMs: 2400,
+      holdSegments: [
+        { offsetMs: 0,    zone: 'CENTER', keys: ['center']        },
+        { offsetMs: 700,  zone: 'UP',     keys: ['center', 'up']  },  // partial add A
+        { offsetMs: 1400, zone: 'CENTER', keys: ['center']        },  // partial release A
+        { offsetMs: 1900, zone: 'DOWN',   keys: ['down']          },  // total switch to D
+      ]
+    },
+    { id: 'b041', timeMs: 41300, zone: 'UP',     intensity: 1.0, holdMs: 0 },
+    { id: 'b042', timeMs: 41800, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    { id: 'b043', timeMs: 42300, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    { id: 'b044', timeMs: 42800, zone: 'UP',     intensity: 1.0, holdMs: 0 },
+    { id: 'b045', timeMs: 43300, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    { id: 'b046', timeMs: 43800, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
+    { id: 'b047', timeMs: 44300, zone: 'UP',     intensity: 1.0, holdMs: 0 },
+    { id: 'b048', timeMs: 44800, zone: 'DOWN',   intensity: 1.0, holdMs: 0 },
+    { id: 'b049', timeMs: 45300, zone: 'CENTER', intensity: 0.8, holdMs: 0 },
   ],
   events: [],
 };
@@ -207,9 +201,9 @@ export class MenuScene extends Phaser.Scene {
   _drawControlsHint(cx, y) {
     const up     = keyCodeToName(keyBindings.get('LINE_UP'));
     const down   = keyCodeToName(keyBindings.get('LINE_DOWN'));
-    const freeze = keyCodeToName(keyBindings.get('FREEZE'));
+    const center = keyCodeToName(keyBindings.get('CENTER_HOLD'));
     this.add.text(cx, y,
-      `[${up}] UP   [${down}] DOWN   [${freeze}] FREEZE`, {
+      `[${up}] UP   [${down}] DOWN   [${center}] CENTER HOLD`, {
       fontFamily: 'monospace', fontSize: '12px', color: '#005533',
     }).setOrigin(0.5);
   }

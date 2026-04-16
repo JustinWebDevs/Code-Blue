@@ -13,10 +13,12 @@ export const CHAOS_LEVELS = {
 
 // Normalized position thresholds for zone classification
 // position: -1.0 = top, 0 = center, +1.0 = bottom
+// Thresholds match the 0.66 factor used in GhostLine.zoneToPixelY so the zone
+// boundary aligns exactly with the note head's drawn position.
 export const ECG_ZONES = {
-  UP:     { min: -1.0,  max: -0.33 },
-  CENTER: { min: -0.33, max:  0.33 },
-  DOWN:   { min:  0.33, max:  1.0  },
+  UP:     { min: -1.0,  max: -0.66 },
+  CENTER: { min: -0.66, max:  0.66 },
+  DOWN:   { min:  0.66, max:  1.0  },
 };
 
 export const PHYSICS = {
@@ -24,7 +26,6 @@ export const PHYSICS = {
   // A held → target -1.0 (top), D held → target +1.0 (bottom), none → target 0 (center).
   SPRING_STIFFNESS: 0.10,  // how fast position chases target (higher = snappier)
   DAMPING:          0.82,  // velocity retention per frame (lower = more drag)
-  FREEZE_DRAG:      0.75,  // extra drag while Space held
   ECG_AMPLITUDE_PX: 200,   // max pixel deviation from center
 };
 
@@ -62,7 +63,8 @@ export const NOTE_COLORS = {
 };
 
 export const HOLD = {
-  COMPLETE_BONUS: 2.0,  // score multiplier for a full hold (strike score × this)
+  COMPLETE_BONUS:       2.0,   // score multiplier for a full hold (strike score × this)
+  TRANSITION_GRACE_MS:  300,   // grace window after a segment change — player has this long to reach new zone/keys
 };
 
 export const SCREEN = {

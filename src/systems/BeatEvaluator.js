@@ -1,13 +1,26 @@
 import { TIMING_WINDOWS, SCORE, HOLD } from '../config/Constants.js';
 import { EventBus } from '../utils/EventBus.js';
 
+/**
+ * Returns the default required keys for a segment zone.
+ * A segment may override this by providing an explicit `keys` array.
+ * Key names match InputSystem.getState(): 'up', 'down', 'center'.
+ */
+function defaultKeysForZone(zone) {
+  if (zone === 'UP')     return ['up'];
+  if (zone === 'DOWN')   return ['down'];
+  if (zone === 'CENTER') return ['center'];
+  return [];
+}
+
 export class BeatEvaluator {
   constructor(beatmapSystem, ecgPhysics) {
     this._beatmapSystem    = beatmapSystem;
     this._ecgPhysics       = ecgPhysics;
 
-    this._activeWindow     = null;   // beat currently open for evaluation
-    this._holdState        = null;   // { beat, startMs, endMs } when hold is active
+    this._activeWindow     = null;
+    this._holdState        = null;   // { beat, startMs, segmentIdx, segmentChangedMs }
+    this._holdBaseScore    = 0;
     this._currentSongTimeMs = 0;
 
     this._stats = {
@@ -23,9 +36,10 @@ export class BeatEvaluator {
   update(songTimeMs) {
     this._currentSongTimeMs = songTimeMs;
 
-    // ── Hold phase: check if player is still holding the zone ──
+    // ── Hold phase ──
     if (this._holdState) {
       this._updateHold(songTimeMs);
+      this._skipExpiredBeats(songTimeMs);
       return;
     }
 
@@ -34,81 +48,100 @@ export class BeatEvaluator {
     const beat = this._beatmapSystem.getActiveBeat(TIMING_WINDOWS.GOOD + 20);
     if (!beat) return;
 
-    const delta = songTimeMs - beat.timeMs; // negative = early
+    const delta = songTimeMs - beat.timeMs;
 
-    // Open the evaluation window when beat is near
     if (delta >= -(TIMING_WINDOWS.GOOD + 20)) {
       this._activeWindow = beat;
     }
     if (!this._activeWindow) return;
 
-    // ── CENTER notes: position-based evaluation ──
+    // ── CENTER notes: position-based ──
     if (beat.zone === 'CENTER') {
       const absDelta = Math.abs(delta);
       if (this._ecgPhysics.getZone() === 'CENTER') {
-        if (absDelta <= TIMING_WINDOWS.PERFECT) {
-          this._judge('PERFECT', beat);
-          return;
-        }
+        if (absDelta <= TIMING_WINDOWS.PERFECT) { this._judge('PERFECT', beat); return; }
         if (delta > TIMING_WINDOWS.PERFECT && delta <= TIMING_WINDOWS.GOOD) {
-          this._judge('GOOD', beat);
-          return;
+          this._judge('GOOD', beat); return;
         }
       }
-      // Window expired
-      if (delta > TIMING_WINDOWS.GOOD) {
-        this._judge('MISS', beat);
-      }
+      if (delta > TIMING_WINDOWS.GOOD) this._judge('MISS', beat);
       return;
     }
 
     // ── UP / DOWN notes: crossing mechanic ──
-    // Score when the ECG line enters the target zone this frame
     if (this._ecgPhysics.didEnterZone(beat.zone)) {
       const absDelta = Math.abs(delta);
-      if (absDelta <= TIMING_WINDOWS.PERFECT) {
-        this._judge('PERFECT', beat);
-      } else if (absDelta <= TIMING_WINDOWS.GOOD) {
-        this._judge('GOOD', beat);
-      }
-      // Crossing outside timing window: don't judge, wait for expiry or another crossing
+      if (absDelta <= TIMING_WINDOWS.PERFECT)     this._judge('PERFECT', beat);
+      else if (absDelta <= TIMING_WINDOWS.GOOD)   this._judge('GOOD', beat);
       return;
     }
 
-    // Window expired — miss
-    if (delta > TIMING_WINDOWS.GOOD) {
-      this._judge('MISS', beat);
-    }
+    if (delta > TIMING_WINDOWS.GOOD) this._judge('MISS', beat);
   }
 
-  // ── Hold update: called each frame while _holdState is active ──
+  // ── Hold update ──
   _updateHold(songTimeMs) {
     const { beat, startMs } = this._holdState;
     const elapsed  = songTimeMs - startMs;
     const progress = Math.min(elapsed / beat.holdMs, 1.0);
 
-    // Player left the zone?
-    if (this._ecgPhysics.getZone() !== beat.zone) {
-      const partial = progress > 0.30;
-      this._finishHold(partial ? 'HOLD_BREAK' : 'MISS', beat, progress);
+    const segments = this._getSegments(beat);
+
+    // Advance segment index when its time arrives
+    while (
+      this._holdState.segmentIdx + 1 < segments.length &&
+      elapsed >= segments[this._holdState.segmentIdx + 1].offsetMs
+    ) {
+      this._holdState.segmentIdx++;
+      this._holdState.segmentChangedMs = songTimeMs;
+      EventBus.emit('hold:segmentChange', {
+        beat,
+        segmentIdx: this._holdState.segmentIdx,
+        zone: segments[this._holdState.segmentIdx].zone,
+      });
+    }
+
+    const currentSeg  = segments[this._holdState.segmentIdx];
+    const requiredKeys = this._requiredKeys(currentSeg);
+
+    const inZone  = this._ecgPhysics.getZone() === currentSeg.zone;
+    const keysOk  = requiredKeys.every(k => this._ecgPhysics.isKeyHeld(k));
+
+    // Grace window right after a segment transition — give the player time to switch inputs
+    const graceElapsed = songTimeMs - this._holdState.segmentChangedMs;
+    const inGrace      = graceElapsed < HOLD.TRANSITION_GRACE_MS;
+
+    if (!inZone || !keysOk) {
+      if (inGrace) return; // still transitioning — don't break yet
+      this._finishHold(progress > 0.30 ? 'HOLD_BREAK' : 'MISS', beat, progress);
       return;
     }
 
-    // Hold complete
     if (progress >= 1.0) {
       this._finishHold('HOLD_COMPLETE', beat, 1.0);
+    }
+  }
+
+  // Skip beats whose window expired while we were locked in hold phase
+  _skipExpiredBeats(songTimeMs) {
+    let beat = this._beatmapSystem.peekBeat();
+    while (beat && this._holdState && beat !== this._holdState.beat) {
+      if (songTimeMs - beat.timeMs > TIMING_WINDOWS.GOOD) {
+        this._beatmapSystem.advanceBeat();
+        beat = this._beatmapSystem.peekBeat();
+      } else {
+        break;
+      }
     }
   }
 
   _finishHold(result, beat, progress) {
     this._holdState = null;
 
-    // Resolve combo: HOLD_COMPLETE continues the streak, HOLD_BREAK/MISS resets it
     if (result === 'HOLD_COMPLETE') {
       this._stats.score += Math.floor(this._holdBaseScore * HOLD.COMPLETE_BONUS);
       this._stats.combo++;
     } else {
-      // HOLD_BREAK or MISS — break the combo
       this._stats.combo = 0;
     }
 
@@ -125,7 +158,6 @@ export class BeatEvaluator {
         baseScore = Math.floor(SCORE.PERFECT_BASE * (1 + this._stats.combo * 0.1));
         this._stats.score += baseScore;
         this._stats.perfects++;
-        // Don't touch combo yet for holds — _finishHold will resolve it
         if (beat.holdMs === 0) this._stats.combo++;
         break;
       case 'GOOD':
@@ -143,12 +175,15 @@ export class BeatEvaluator {
     this._stats.score    = Math.floor(this._stats.score);
     this._stats.maxCombo = Math.max(this._stats.maxCombo, this._stats.combo);
 
-    // If this beat has a hold and wasn't missed, enter hold phase
     if (beat.holdMs > 0 && result !== 'MISS') {
       this._holdBaseScore = baseScore;
-      this._holdState     = { beat, startMs: this._currentSongTimeMs };
-      this._activeWindow  = null;
-      // Emit the strike result immediately (shows PERFECT/GOOD flash)
+      this._holdState     = {
+        beat,
+        startMs:          this._currentSongTimeMs,
+        segmentIdx:       0,
+        segmentChangedMs: this._currentSongTimeMs,
+      };
+      this._activeWindow = null;
       EventBus.emit('beat:evaluated', { result, beat, stats: { ...this._stats } });
       return;
     }
@@ -158,22 +193,39 @@ export class BeatEvaluator {
     EventBus.emit('beat:evaluated', { result, beat, stats: { ...this._stats } });
   }
 
-  /** Returns current hold progress for GhostLine: { beat, progress 0–1, zone } or null */
+  /** Required input keys for a segment (uses explicit `keys` array or zone default). */
+  _requiredKeys(seg) {
+    if (seg.keys?.length) return seg.keys;
+    return defaultKeysForZone(seg.zone);
+  }
+
+  /** Returns hold segments; falls back to a single-segment array for simple holds. */
+  _getSegments(beat) {
+    if (beat.holdSegments?.length) return beat.holdSegments;
+    return [{ offsetMs: 0, zone: beat.zone }];
+  }
+
+  /**
+   * Returns current hold state for GhostLine.
+   * Includes segmentChangedMs so the renderer can show the grace-window indicator.
+   */
   getHoldState() {
     if (!this._holdState) return null;
-    const { beat, startMs } = this._holdState;
+    const { beat, startMs, segmentIdx, segmentChangedMs } = this._holdState;
     const progress = Math.min((this._currentSongTimeMs - startMs) / beat.holdMs, 1.0);
-    return { beat, progress, zone: beat.zone };
+    const segments = this._getSegments(beat);
+    const zone     = segments[segmentIdx].zone;
+    return { beat, progress, zone, segmentIdx, segmentChangedMs };
   }
 
   getStats()   { return { ...this._stats }; }
   isFinished() { return this._beatmapSystem.isFinished(); }
 
   reset() {
-    this._activeWindow      = null;
-    this._holdState         = null;
-    this._holdBaseScore     = 0;
-    this._currentSongTimeMs = 0;
+    this._activeWindow       = null;
+    this._holdState          = null;
+    this._holdBaseScore      = 0;
+    this._currentSongTimeMs  = 0;
     this._stats = { score: 0, perfects: 0, goods: 0, misses: 0, combo: 0, maxCombo: 0 };
   }
 }

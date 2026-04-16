@@ -5,9 +5,8 @@ export class ECGPhysics {
   constructor() {
     this.position      = 0;   // -1.0 (top) to +1.0 (bottom), 0 = center
     this.velocity      = 0;
-    this._frozen       = false;
-    this._freezePos    = 0;
     this._prevPosition = 0;
+    this._lastInput    = null;
 
     // Noise overlay for chaos effects (set externally)
     this.noiseAmplitude = 0;
@@ -15,25 +14,14 @@ export class ECGPhysics {
 
   update(delta, inputState) {
     this._prevPosition = this.position;   // save before physics step
+    this._lastInput    = inputState;
     const dt = delta / 16.667; // normalize to 60fps units
 
     // Determine spring target from input
     let target = 0.0;
-
-    if (inputState.freeze) {
-      if (!this._frozen) {
-        this._frozen    = true;
-        this._freezePos = this.position;
-      }
-      target = this._freezePos;
-      // Extra drag while frozen so the line settles quickly
-      this.velocity *= Math.pow(PHYSICS.FREEZE_DRAG, dt);
-    } else {
-      this._frozen = false;
-      if (inputState.up)        target = -1.0;
-      else if (inputState.down) target =  1.0;
-      // else target stays 0.0 (return to center)
-    }
+    if (inputState.up)        target = -1.0;
+    else if (inputState.down) target =  1.0;
+    // else target stays 0.0 (spring returns to center)
 
     // Spring: pull velocity toward target
     const springForce = (target - this.position) * PHYSICS.SPRING_STIFFNESS * dt;
@@ -45,6 +33,19 @@ export class ECGPhysics {
     // Integrate
     this.position += this.velocity * dt;
     this.position = clamp(this.position, -1.0, 1.0);
+  }
+
+  /** Returns true if the Space (CENTER_HOLD) key is currently held. */
+  isCenterHeld() {
+    return this._lastInput?.center ?? false;
+  }
+
+  /**
+   * Returns true if the given input key is currently held.
+   * Key names match InputSystem.getState(): 'up', 'down', 'center'.
+   */
+  isKeyHeld(key) {
+    return this._lastInput?.[key] ?? false;
   }
 
   /** Returns the pixel Y position for the line center */
@@ -79,7 +80,6 @@ export class ECGPhysics {
     return {
       position: this.position,
       velocity: this.velocity,
-      frozen:   this._frozen,
       zone:     this.getZone(),
     };
   }
@@ -87,9 +87,8 @@ export class ECGPhysics {
   reset() {
     this.position       = 0;
     this.velocity       = 0;
-    this._frozen        = false;
-    this._freezePos     = 0;
     this._prevPosition  = 0;
+    this._lastInput     = null;
     this.noiseAmplitude = 0;
   }
 }

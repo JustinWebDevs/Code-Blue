@@ -1,8 +1,8 @@
 // Action definitions: default keyCodes + display labels
 export const ACTIONS = {
-  LINE_UP:   { label: 'LINE UP',   default: 65 },   // A
-  LINE_DOWN: { label: 'LINE DOWN', default: 68 },   // D
-  FREEZE:    { label: 'FREEZE',    default: 32 },   // SPACE
+  LINE_UP:      { label: 'LINE UP',      default: 65 },   // A
+  LINE_DOWN:    { label: 'LINE DOWN',    default: 68 },   // D
+  CENTER_HOLD:  { label: 'CENTER HOLD',  default: 32 },   // SPACE
 };
 
 const STORAGE_KEY = 'codeblue_bindings_v1';

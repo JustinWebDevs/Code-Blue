@@ -16,9 +16,11 @@ const HOP_SIZE   = 512;
 const BATCH_SIZE = 80;     // frames per async yield (keeps UI responsive)
 
 // Onset detection tuning
-const THRESHOLD_MULTIPLIER = 1.6;   // higher = fewer false positives
-const THRESHOLD_WINDOW     = 20;    // ±N frames for local mean
-const MIN_BEAT_GAP_MS      = 175;   // minimum ms between consecutive beats
+const THRESHOLD_MULTIPLIER  = 1.6;   // higher = fewer false positives
+const THRESHOLD_WINDOW      = 20;    // ±N frames for local mean
+const MIN_BEAT_GAP_MS       = 300;   // global minimum ms between any two consecutive beats
+const MIN_SAME_ZONE_GAP_MS  = 600;   // minimum ms between two beats in the same zone
+const MIN_FIRST_BEAT_MS     = 3000;  // skip any onset before this many ms (start grace period)
 
 // Frequency band boundaries (Hz)
 const BAND_LOW_MAX  =  300;
@@ -235,17 +237,28 @@ export class BeatDetector {
     const hopMs     = (HOP_SIZE / sampleRate) * 1000;
     const beats     = [];
     let   lastMs    = -MIN_BEAT_GAP_MS;
+    let   lastZone  = null;
+    let   lastZoneMs = { UP: -MIN_SAME_ZONE_GAP_MS, CENTER: -MIN_SAME_ZONE_GAP_MS, DOWN: -MIN_SAME_ZONE_GAP_MS };
     let   beatIndex = 1;
 
     for (const frameIdx of onsets) {
       const timeMs = Math.round(frameIdx * hopMs);
 
-      // Enforce minimum gap between beats
+      // Grace period: skip onsets too close to the start of the track
+      if (timeMs < MIN_FIRST_BEAT_MS) continue;
+
+      // Enforce global minimum gap between any two beats
       if (timeMs - lastMs < MIN_BEAT_GAP_MS) continue;
-      lastMs = timeMs;
 
       const { lowFlux, midFlux, highFlux } = features[frameIdx];
       const zone = this._classifyZone(lowFlux, midFlux, highFlux);
+
+      // Enforce minimum gap between consecutive same-zone beats
+      if (timeMs - lastZoneMs[zone] < MIN_SAME_ZONE_GAP_MS) continue;
+
+      lastMs             = timeMs;
+      lastZoneMs[zone]   = timeMs;
+      lastZone           = zone;
 
       // Detect hold duration: scan forward for sustained flux above a floor
       const sustainFloor  = features[frameIdx].flux * 0.35;

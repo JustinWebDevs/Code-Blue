@@ -18,6 +18,11 @@ export class BeatmapSystem {
     return delta <= windowMs ? beat : null;
   }
 
+  /** Returns the current beat without advancing or checking timing, or null if none remain */
+  peekBeat() {
+    return this._beats[this._nextIndex] ?? null;
+  }
+
   /** Called by BeatEvaluator when a beat is judged (pass or miss) */
   advanceBeat() {
     this._nextIndex++;

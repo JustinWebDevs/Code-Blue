@@ -59,8 +59,9 @@ export class GameScene extends Phaser.Scene {
     this._hud          = new HUD(this, this._patientName);
 
     // --- Events ---
-    EventBus.on('beat:evaluated', this._onBeatEvaluated, this);
-    EventBus.on('chaos:flatline', this._onFlatline,      this);
+    EventBus.on('beat:evaluated',    this._onBeatEvaluated,    this);
+    EventBus.on('chaos:flatline',    this._onFlatline,         this);
+    EventBus.on('hold:segmentChange',this._onSegmentChange,    this);
 
     // --- Pause key ---
     this._pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
@@ -68,12 +69,14 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P)
       .on('down', this._togglePause, this);
 
-    // --- Start audio ---
-    this._audioManager.startTrack();
+    // --- Countdown then start audio ---
+    this._countingDown = true;
+    this._startCountdown();
   }
 
   update(time, delta) {
-    if (this._gameOver) return;
+    if (this._gameOver)    return;
+    if (this._countingDown) return;
     if (!this._audioManager.isReady()) return;  // wait for audio to start playing
 
     const songTimeMs = this._audioManager.getCurrentTime();
@@ -107,6 +110,56 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  _startCountdown() {
+    const cx = SCREEN.WIDTH  / 2;
+    const cy = SCREEN.HEIGHT / 2;
+
+    const style = {
+      fontFamily: 'monospace',
+      fontSize:   '96px',
+      color:      '#00ff88',
+      stroke:     '#000000',
+      strokeThickness: 4,
+    };
+
+    const txt = this.add.text(cx, cy, '3', style).setOrigin(0.5).setDepth(50).setAlpha(0);
+
+    const showTick = (label, onDone) => {
+      txt.setText(label);
+      txt.setScale(1.5);
+      txt.setAlpha(1);
+      this.tweens.add({
+        targets:  txt,
+        scaleX:   1,
+        scaleY:   1,
+        alpha:    0,
+        duration: 800,
+        ease:     'Quad.easeIn',
+        onComplete: onDone,
+      });
+    };
+
+    showTick('3', () =>
+      this.time.delayedCall(200, () =>
+        showTick('2', () =>
+          this.time.delayedCall(200, () =>
+            showTick('1', () =>
+              this.time.delayedCall(200, () => {
+                style.color = '#ffffff';
+                txt.setStyle(style);
+                showTick('GO!', () => {
+                  txt.destroy();
+                  this._countingDown = false;
+                  this._audioManager.startTrack();
+                });
+              })
+            )
+          )
+        )
+      )
+    );
+  }
+
   _onBeatEvaluated({ result, beat, stats }) {
     this._chaosSystem.onBeatResult(result);
     this._hud.showJudgement(result);
@@ -119,6 +172,11 @@ export class GameScene extends Phaser.Scene {
     } else {
       this._audioManager.playSFX('miss');
     }
+  }
+
+  _onSegmentChange({ beat, segmentIdx, zone }) {
+    // Short accent beep to signal the hold path changed
+    this._audioManager.playSFX('good');
   }
 
   _togglePause() {
@@ -147,8 +205,9 @@ export class GameScene extends Phaser.Scene {
   _endGame(reason) {
     this._gameOver = true;
     this._audioManager.stopTrack();
-    EventBus.off('beat:evaluated', this._onBeatEvaluated, this);
-    EventBus.off('chaos:flatline', this._onFlatline,      this);
+    EventBus.off('beat:evaluated',     this._onBeatEvaluated, this);
+    EventBus.off('chaos:flatline',     this._onFlatline,      this);
+    EventBus.off('hold:segmentChange', this._onSegmentChange, this);
 
     const stats = this._beatEvaluator.getStats();
 
@@ -178,11 +237,11 @@ export class GameScene extends Phaser.Scene {
     g.lineTo(SCREEN.WIDTH, SCREEN.HEIGHT / 2);
     g.strokePath();
 
-    // Zone boundary lines across full width
+    // Zone boundary lines across full width (match ECG_ZONES thresholds ±0.66)
     const amp = PHYSICS.ECG_AMPLITUDE_PX;
     const cy  = SCREEN.HEIGHT / 2;
     g.lineStyle(1, 0x00ff88, 0.04);
-    [-0.33, 0.33].forEach(t => {
+    [-0.66, 0.66].forEach(t => {
       const y = cy + t * amp;
       g.moveTo(0, y);
       g.lineTo(SCREEN.WIDTH, y);
@@ -191,8 +250,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   shutdown() {
-    EventBus.off('beat:evaluated', this._onBeatEvaluated, this);
-    EventBus.off('chaos:flatline', this._onFlatline,      this);
+    EventBus.off('beat:evaluated',     this._onBeatEvaluated, this);
+    EventBus.off('chaos:flatline',     this._onFlatline,      this);
+    EventBus.off('hold:segmentChange', this._onSegmentChange, this);
     if (this._audioManager) this._audioManager.destroy();
   }
 }
