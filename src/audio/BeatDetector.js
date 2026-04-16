@@ -80,6 +80,18 @@ for (let i = 0; i < FRAME_SIZE; i++) {
 }
 
 
+// Probability that a hold with duration ≥ 1200 ms becomes a transitional hold
+const TRANSITION_HOLD_CHANCE = 0.18;
+// Minimum hold duration (ms) needed to add a transition segment
+const MIN_TRANSITION_HOLD_MS = 1200;
+
+function _defaultKeysForZone(zone) {
+  if (zone === 'UP')     return ['up'];
+  if (zone === 'DOWN')   return ['down'];
+  if (zone === 'CENTER') return ['center'];
+  return [];
+}
+
 // ---------------------------------------------------------------------------
 export class BeatDetector {
 
@@ -271,13 +283,28 @@ export class BeatDetector {
       const rawHoldMs = holdFrames * hopMs;
       const holdMs    = rawHoldMs >= 500 ? Math.round(rawHoldMs / 50) * 50 : 0;
 
-      beats.push({
+      // Optionally upgrade long holds to transitional holds
+      let holdSegments;
+      if (holdMs >= MIN_TRANSITION_HOLD_MS && Math.random() < TRANSITION_HOLD_CHANCE) {
+        const others   = ['UP', 'CENTER', 'DOWN'].filter(z => z !== zone);
+        const nextZone = others[Math.floor(Math.random() * others.length)];
+        // Split point: 40–65 % through the hold
+        const splitMs  = Math.round(holdMs * (0.40 + Math.random() * 0.25));
+        holdSegments = [
+          { offsetMs: 0,       zone,     keys: _defaultKeysForZone(zone)     },
+          { offsetMs: splitMs, zone: nextZone, keys: _defaultKeysForZone(nextZone) },
+        ];
+      }
+
+      const beat = {
         id:        `b${String(beatIndex++).padStart(3, '0')}`,
         timeMs,
         zone,
         intensity: 1.0,
         holdMs,
-      });
+      };
+      if (holdSegments) beat.holdSegments = holdSegments;
+      beats.push(beat);
     }
 
     return beats;

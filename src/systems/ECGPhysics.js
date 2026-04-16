@@ -7,9 +7,24 @@ export class ECGPhysics {
     this.velocity      = 0;
     this._prevPosition = 0;
     this._lastInput    = null;
+    this._holdTarget   = null;  // normalized zone-center position during holds
 
     // Noise overlay for chaos effects (set externally)
     this.noiseAmplitude = 0;
+  }
+
+  /**
+   * During an active hold the spring blends the player's input target with the
+   * zone centre, keeping the ECG line visually "inside" the hold band.
+   */
+  setHoldZone(zone) {
+    if (zone === 'UP')        this._holdTarget = -0.83;
+    else if (zone === 'DOWN') this._holdTarget =  0.83;
+    else                      this._holdTarget =  0.0;   // CENTER
+  }
+
+  clearHoldZone() {
+    this._holdTarget = null;
   }
 
   update(delta, inputState) {
@@ -22,6 +37,11 @@ export class ECGPhysics {
     if (inputState.up)        target = -1.0;
     else if (inputState.down) target =  1.0;
     // else target stays 0.0 (spring returns to center)
+
+    // During a hold: blend toward zone centre so the line stays inside the band
+    if (this._holdTarget !== null) {
+      target = target * 0.5 + this._holdTarget * 0.5;
+    }
 
     // Spring: pull velocity toward target
     const springForce = (target - this.position) * PHYSICS.SPRING_STIFFNESS * dt;
@@ -90,5 +110,6 @@ export class ECGPhysics {
     this._prevPosition  = 0;
     this._lastInput     = null;
     this.noiseAmplitude = 0;
+    this._holdTarget    = null;
   }
 }

@@ -117,7 +117,8 @@ export class GameScene extends Phaser.Scene {
     this._ecgRenderer.update({ pixelY }, this._chaosSystem.getLevel());
 
     // UI
-    this._ghostLine.update(songTimeMs, this._beatEvaluator.getHoldState());
+    const lineY = this._ecgPhysics.getPixelY(SCREEN.HEIGHT);
+    this._ghostLine.update(songTimeMs, this._beatEvaluator.getHoldState(), lineY);
     this._chaosEffects.update(delta);
     this._hud.update(
       this._chaosSystem.getState(),
@@ -186,6 +187,24 @@ export class GameScene extends Phaser.Scene {
     this._chaosSystem.onBeatResult(result);
     this._hud.showJudgement(result);
 
+    // Hold zone — keep ECG spring biased toward zone centre during holds
+    if ((result === 'PERFECT' || result === 'GOOD') && beat.holdMs > 0) {
+      this._ecgPhysics.setHoldZone(beat.zone);
+    } else if (result === 'HOLD_COMPLETE' || result === 'HOLD_BREAK') {
+      this._ecgPhysics.clearHoldZone();
+    }
+
+    // Missed / broken note — leave a fading ghost at the judgment cursor
+    if (result === 'MISS' || result === 'HOLD_BREAK') {
+      const t = this._audioManager.getCurrentTime();
+      this._ghostLine.pushMissed(beat, t);
+    }
+
+    // Hit particles on successful hits
+    if (result === 'PERFECT' || result === 'GOOD' || result === 'HOLD_COMPLETE') {
+      this._spawnHitParticles(beat.zone);
+    }
+
     // SFX
     if (result === 'PERFECT' || result === 'HOLD_COMPLETE') {
       this._audioManager.playSFX('perfect');
@@ -199,6 +218,9 @@ export class GameScene extends Phaser.Scene {
   _onSegmentChange({ beat, segmentIdx, zone }) {
     // Short accent beep to signal the hold path changed
     this._audioManager.playSFX('good');
+
+    // Keep spring biased toward the new segment's zone centre
+    this._ecgPhysics.setHoldZone(zone);
 
     // Flash "→ KEY" at the judgment cursor so the player knows what to press
     const segments = beat.holdSegments?.length ? beat.holdSegments : [{ zone: beat.zone }];
@@ -259,6 +281,41 @@ export class GameScene extends Phaser.Scene {
       timestamp:   new Date(),
       beatmap:     this._beatmapData,
     });
+  }
+
+  /** Burst of small colored circles flying outward from the judgment cursor. */
+  _spawnHitParticles(zone) {
+    const half = SCREEN.HEIGHT / 2;
+    const amp  = PHYSICS.ECG_AMPLITUDE_PX;
+    let cy;
+    if (zone === 'UP')        cy = half - amp * 0.66;
+    else if (zone === 'DOWN') cy = half + amp * 0.66;
+    else                      cy = half;
+
+    const cx    = SCREEN.JUDGMENT_X;
+    const color = NOTE_COLORS[zone] ?? 0x00ff88;
+    const count = 10;
+
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      const speed = 55 + Math.random() * 70;
+      const size  = 2 + Math.random() * 2;
+      const dot   = this.add.graphics().setDepth(25);
+      dot.fillStyle(color, 1.0);
+      dot.fillCircle(0, 0, size);
+      dot.setPosition(cx, cy);
+      this.tweens.add({
+        targets:  dot,
+        x:        cx + Math.cos(angle) * speed,
+        y:        cy + Math.sin(angle) * speed * 0.65,
+        alpha:    0,
+        scaleX:   0.1,
+        scaleY:   0.1,
+        duration: 300 + Math.random() * 150,
+        ease:     'Quad.easeOut',
+        onComplete: () => dot.destroy(),
+      });
+    }
   }
 
   _drawBackground() {

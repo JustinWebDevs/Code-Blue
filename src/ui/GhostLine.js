@@ -4,6 +4,7 @@ const LOOKAHEAD_MS    = 2000;
 const MIN_HOLD_BAR_W  = 40;
 const LABEL_POOL_SIZE = 20;   // note head labels + transition badges
 const BAR_H           = 14;   // hold bar height (px)
+const MISS_LINGER_MS  = 1200; // how long a missed note stays visible (fading)
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
 
@@ -78,6 +79,22 @@ function graceWidthPx() {
   return (HOLD.TRANSITION_GRACE_MS / LOOKAHEAD_MS) * (SCREEN.WIDTH - SCREEN.JUDGMENT_X);
 }
 
+/**
+ * Full pixel band for a zone — spans the entire zone range so the ECG line
+ * always appears *inside* the active-hold background band.
+ * Returns { y, h } in screen coordinates.
+ */
+function zoneFullBand(zone, screenHeight) {
+  const half = screenHeight / 2;
+  const amp  = PHYSICS.ECG_AMPLITUDE_PX;
+  switch (zone) {
+    case 'UP':     return { y: half - amp,        h: amp * 0.34 }; // -1.0 → -0.66
+    case 'DOWN':   return { y: half + amp * 0.66, h: amp * 0.34 }; // +0.66 → +1.0
+    case 'CENTER': return { y: half - amp * 0.66, h: amp * 1.32 }; // -0.66 → +0.66
+    default:       return { y: half - 18,          h: 36 };
+  }
+}
+
 // ── GhostLine ─────────────────────────────────────────────────────────────────
 
 export class GhostLine {
@@ -85,6 +102,7 @@ export class GhostLine {
     this._scene         = scene;
     this._beatmapSystem = beatmapSystem;
     this._graphics      = scene.add.graphics();
+    this._missedBeats   = [];   // { beat, missedAtMs }
 
     this._labelPool  = [];
     this._labelUsed  = 0;
@@ -100,7 +118,12 @@ export class GhostLine {
     }
   }
 
-  update(songTimeMs, holdState = null) {
+  /** Record a missed (or hold-broken) beat so it lingers on screen briefly. */
+  pushMissed(beat, songTimeMs) {
+    this._missedBeats.push({ beat, missedAtMs: songTimeMs });
+  }
+
+  update(songTimeMs, holdState = null, currentLineY = null) {
     const g = this._graphics;
     g.clear();
     this._resetLabels();
@@ -113,16 +136,18 @@ export class GhostLine {
     g.strokePath();
 
     if (holdState) {
-      this._drawActiveHold(g, songTimeMs, holdState);
+      this._drawActiveHold(g, songTimeMs, holdState, currentLineY);
     }
 
     const upcoming = this._beatmapSystem.getUpcomingBeats(LOOKAHEAD_MS);
     for (const { beat, msUntil } of upcoming) {
-      // Hide notes that fall within the active hold window
+      // The active hold beat is rendered by _drawActiveHold — skip here
+      if (holdState && beat === holdState.beat) continue;
+
+      // Hide other beats that fall within the active hold window
       if (holdState) {
         const holdEnd = holdState.beat.timeMs + holdState.beat.holdMs;
-        if (beat !== holdState.beat &&
-            beat.timeMs >= holdState.beat.timeMs &&
+        if (beat.timeMs >= holdState.beat.timeMs &&
             beat.timeMs <= holdEnd) continue;
       }
 
@@ -142,11 +167,34 @@ export class GhostLine {
         this._drawNoteLabel(beat.zone, beat.holdMs > 0, tickX, targetY, alpha);
       }
     }
+
+    // ── Missed / broken notes — linger at judgment cursor, fading out ────────
+    this._missedBeats = this._missedBeats.filter(
+      m => songTimeMs - m.missedAtMs < MISS_LINGER_MS,
+    );
+    for (const { beat, missedAtMs } of this._missedBeats) {
+      const age   = songTimeMs - missedAtMs;
+      const alpha = 0.5 * Math.max(0, 1 - age / MISS_LINGER_MS);
+      if (alpha <= 0) continue;
+      const tY    = zoneToPixelY(beat.zone, SCREEN.HEIGHT);
+      const color = NOTE_COLORS[beat.zone] ?? 0xffffff;
+      const SZ    = 10;
+      // Faded note shape
+      g.fillStyle(color, alpha * 0.35);
+      if (beat.zone === 'UP')        drawTriangleUp(g, SCREEN.JUDGMENT_X, tY, SZ);
+      else if (beat.zone === 'DOWN') drawTriangleDown(g, SCREEN.JUDGMENT_X, tY, SZ);
+      else                           g.fillCircle(SCREEN.JUDGMENT_X, tY, SZ);
+      // Red outline — signals failure rather than disappearance
+      g.lineStyle(1.5, 0xff3333, alpha * 0.85);
+      if (beat.zone === 'UP')        strokeTriangleUp(g, SCREEN.JUDGMENT_X, tY, SZ + 2);
+      else if (beat.zone === 'DOWN') strokeTriangleDown(g, SCREEN.JUDGMENT_X, tY, SZ + 2);
+      else                           g.strokeCircle(SCREEN.JUDGMENT_X, tY, SZ + 2);
+    }
   }
 
   // ── Active hold ──────────────────────────────────────────────────────────────
 
-  _drawActiveHold(g, songTimeMs, holdState) {
+  _drawActiveHold(g, songTimeMs, holdState, currentLineY = null) {
     const { beat, progress, segmentIdx, segmentChangedMs } = holdState;
     const segments = beat.holdSegments?.length
       ? beat.holdSegments
@@ -157,10 +205,13 @@ export class GhostLine {
     const currentZone = currentSeg.zone;
     const currentColor = NOTE_COLORS[currentZone] ?? 0xffffff;
     const targetY     = zoneToPixelY(currentZone, SCREEN.HEIGHT);
+    // Anchor follows the real ECG line so it's always "inside" the line
+    const anchorY     = currentLineY ?? targetY;
 
-    // Background zone band
+    // Background band covers the FULL zone range — ECG line always appears inside it
+    const { y: bandY, h: bandH } = zoneFullBand(currentZone, SCREEN.HEIGHT);
     g.fillStyle(currentColor, 0.07);
-    g.fillRect(SCREEN.JUDGMENT_X, targetY - 18, SCREEN.WIDTH - SCREEN.JUDGMENT_X, 36);
+    g.fillRect(SCREEN.JUDGMENT_X, bandY, SCREEN.WIDTH - SCREEN.JUDGMENT_X, bandH);
 
     if (segments.length > 1) {
       this._drawActiveSegmentedBar(g, songTimeMs, beat, segments, elapsed, progress, segmentIdx);
@@ -179,10 +230,10 @@ export class GhostLine {
       }
     }
 
-    // Pulsing anchor circle
+    // Pulsing anchor circle — tracks the actual ECG line position
     const pulse = 0.5 + 0.5 * Math.sin(songTimeMs * 0.015);
     g.lineStyle(2, currentColor, 0.5 + 0.4 * pulse);
-    g.strokeCircle(SCREEN.JUDGMENT_X, targetY, 10 + pulse * 4);
+    g.strokeCircle(SCREEN.JUDGMENT_X, anchorY, 10 + pulse * 4);
 
     // ── Grace-window arc (depletes over TRANSITION_GRACE_MS after each segment change) ──
     // Only shown after the first transition (segmentIdx > 0) so the player
@@ -194,7 +245,7 @@ export class GhostLine {
         const endAngle = -Math.PI / 2 + 2 * Math.PI * graceRatio;
         g.lineStyle(4, currentColor, 0.85);
         g.beginPath();
-        g.arc(SCREEN.JUDGMENT_X, targetY, 22, -Math.PI / 2, endAngle, false);
+        g.arc(SCREEN.JUDGMENT_X, anchorY, 22, -Math.PI / 2, endAngle, false);
         g.strokePath();
       }
     }
@@ -203,7 +254,7 @@ export class GhostLine {
     const reqKeys  = segmentKeys(currentSeg);
     const keyText  = formatKeyLabel(reqKeys);
     if (keyText) {
-      this._acquireLabel(keyText, SCREEN.JUDGMENT_X + 32, targetY, 0.95, hexToCSS(currentColor), '12px');
+      this._acquireLabel(keyText, SCREEN.JUDGMENT_X + 32, anchorY, 0.95, hexToCSS(currentColor), '12px');
     }
   }
 
