@@ -9,5 +9,14 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    chunkSizeWarningLimit: 1800,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          phaser:  ['phaser'],
+          howler:  ['howler'],
+        },
+      },
+    },
   },
 });
